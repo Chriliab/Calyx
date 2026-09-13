@@ -1,6 +1,8 @@
 # Calyx
 
 A booking SaaS for **freelance developers and consultants** to sell paid consultation and discovery calls — with a custom intake form so clients share project details upfront, before the call ever happens.
+![image alt](https://github.com/Chriliab/Calyx/blob/def0d689eef36c775cbb70bf2f2e7492d01ad99e/Calyx_Thumbnail.png)
+
 
 **Live demo:** coming soon &nbsp;•&nbsp; **Demo video/GIF:** coming soon
 
