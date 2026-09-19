@@ -17,7 +17,7 @@ Freelance developers and consultants who charge for their time have no clean way
 
 ## Features
 
-- 🔐 **Auth** — separate consultant and client accounts via Clerk
+- 🔐 **Auth** — consultant accounts via Clerk; clients book as guests (no signup friction)
 - 📅 **Availability & booking** — consultants set availability windows; clients book open slots with automatic double-booking prevention
 - 💳 **Payments** — Stripe Checkout for pay-per-booking, with webhook-driven payment status
 - 📋 **Custom intake form** — clients fill out project details (scope, budget range, timeline) at booking time, so the consultant walks in prepared
