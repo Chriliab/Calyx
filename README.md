@@ -5,7 +5,7 @@ A booking SaaS for **freelance developers and consultants** to sell paid consult
 ![image alt](https://github.com/Chriliab/Calyx/blob/def0d689eef36c775cbb70bf2f2e7492d01ad99e/Calyx_Thumbnail.png)
 
 
-**Live demo:** coming soon &nbsp;•&nbsp; **Demo video/GIF:** coming soon
+**Live demo:** [calyx-gold.vercel.app](https://calyx-gold.vercel.app) &nbsp;•&nbsp; **Demo video/GIF:** coming soon
 
 ![Calyx demo](./docs/demo.gif)
 
@@ -36,6 +36,15 @@ Freelance developers and consultants who charge for their time have no clean way
 | Payments | Stripe (Checkout + Webhooks) |
 | Email | Resend |
 | Hosting | Vercel |
+
+## Known issues & technical debt
+
+**Next.js pinned to v14.** Next 15/16 currently pull in Tailwind v4, whose native Windows binary (`@tailwindcss/oxide-win32-x64-msvc`) fails to install reliably in this environment — a known npm optional-dependency bug. Pinning to Next 14 with Tailwind v3 was the pragmatic call to keep the build moving.
+
+**Consequence:** `npm audit` reports vulnerabilities in the Next 14 dependency tree, including a critical RCE advisory that applies to self-hosted Windows servers. Calyx deploys to Vercel (Linux), so the exposure is limited, but this is real technical debt.
+
+**Plan:** upgrade to Next 16 + Tailwind v4 before final release, once the toolchain issue is resolved. Tracked rather than ignored.
+
 
 ## Architecture
 
