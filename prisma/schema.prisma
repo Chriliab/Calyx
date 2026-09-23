@@ -6,7 +6,6 @@
 
 generator client {
   provider = "prisma-client-js"
-  
 }
 
 datasource db {
@@ -26,103 +25,99 @@ enum PaymentStatus {
   FAILED
 }
 
-
 model Consultant {
-    id        String   @id
-    email     String   @unique
-    name      String
-    slug      String   @unique
-    timezone  String
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
-    sessionTypes SessionType[]
-    availabilityRules AvailabilityRule[]
-    bookings Booking[]
-
+  id                String             @id
+  email             String             @unique
+  name              String
+  slug              String             @unique
+  timezone          String
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  sessionTypes      SessionType[]
+  availabilityRules AvailabilityRule[]
+  bookings          Booking[]
 }
 
 model SessionType {
-  id              String   @id @default(cuid())
+  id              String     @id @default(cuid())
   consultantId    String
   consultant      Consultant @relation(fields: [consultantId], references: [id])
   title           String
   durationMinutes Int
   priceCents      Int
-  currency        String   @default("EUR")
-  isActive        Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  currency        String     @default("EUR")
+  isActive        Boolean    @default(true)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  bookings        Booking[]
 
   @@index([consultantId])
-  bookings Booking[]
 }
 
 model AvailabilityRule {
-  id           String   @id @default(cuid())
+  id           String     @id @default(cuid())
   consultantId String
   consultant   Consultant @relation(fields: [consultantId], references: [id])
   dayOfWeek    Int
   startMinute  Int
   endMinute    Int
-  createdAt    DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 
   @@index([consultantId])
 }
 
 model Client {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   email     String
   name      String
   bookings  Booking[]
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 
   @@index([email])
 }
 
 model Booking {
-  id                 String   @id @default(cuid())
-  consultantId       String
-  consultant         Consultant @relation(fields: [consultantId], references: [id])
-  sessionTypeId      String
-  sessionType        SessionType @relation(fields: [sessionTypeId], references: [id])
-  clientId           String
-  client             Client   @relation(fields: [clientId], references: [id])
+  id            String      @id @default(cuid())
+  consultantId  String
+  consultant    Consultant  @relation(fields: [consultantId], references: [id])
+  sessionTypeId String
+  sessionType   SessionType @relation(fields: [sessionTypeId], references: [id])
+  clientId      String
+  client        Client      @relation(fields: [clientId], references: [id])
 
-  startsAt           DateTime
-  endsAt             DateTime
-  status             BookingStatus @default(PENDING)
+  startsAt DateTime
+  endsAt   DateTime
+  status   BookingStatus @default(PENDING)
 
-  priceAtBooking     Int
-  currencyAtBooking  String
+  priceAtBooking    Int
+  currencyAtBooking String
 
   projectDescription String
   budgetRange        String
   timeline           String
 
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  payment   Payment?
 
   @@index([consultantId])
   @@index([consultantId, startsAt])
   @@index([status])
-  payment Payment?
-
 }
 
-
 model Payment {
-  id                    String   @id @default(cuid())
-  bookingId             String   @unique
-  booking               Booking  @relation(fields: [bookingId], references: [id])
+  id        String  @id @default(cuid())
+  bookingId String  @unique
+  booking   Booking @relation(fields: [bookingId], references: [id])
 
-  stripeSessionId       String   @unique
+  stripeSessionId       String  @unique
   stripePaymentIntentId String?
 
-  amountCents           Int
-  currency              String
-  status                PaymentStatus @default(PENDING)
+  amountCents Int
+  currency    String
+  status      PaymentStatus @default(PENDING)
 
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
