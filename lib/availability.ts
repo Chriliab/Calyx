@@ -103,4 +103,21 @@ export function generateSlots(options: GenerateSlotsOptions): Interval[] {
   return slots.sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
 }
 
-import { prisma } from "@/lib/prisma";
+
+
+/**
+ * Is this exact instant a real, free, future slot?
+ * Reuses generateSlots so validation and display can never disagree.
+ */
+export function isValidSlotStart(
+  startsAt: Date,
+  options: Omit<GenerateSlotsOptions, "rangeStart" | "rangeEnd">,
+): boolean {
+  const slots = generateSlots({
+    ...options,
+    rangeStart: new Date(startsAt.getTime() - 1),
+    rangeEnd: new Date(startsAt.getTime() + 1),
+  });
+
+  return slots.some((slot) => slot.startsAt.getTime() === startsAt.getTime());
+}

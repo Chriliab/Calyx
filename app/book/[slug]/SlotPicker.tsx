@@ -1,5 +1,5 @@
 "use client";
-
+import { BookingForm } from "./BookingForm";
 import { useState } from "react";
 import {
   groupSlotsByDay,
@@ -126,13 +126,14 @@ export function SlotPicker({ slug, timezone, initialSlots }: Props) {
         ))}
 
       {selectedSlot && (
-        <div className="mt-10 rounded-lg border border-neutral-700 p-4">
-          <p className="text-sm text-neutral-400">Selected</p>
-          <p className="mt-1 font-medium">
-            {selectedSlot.day.heading} at {selectedSlot.slot.label}
-          </p>
-        </div>
+             
+        <BookingForm
+          slug={slug}
+          startsAt={selectedSlot.slot.startsAt}
+          heading={selectedSlot.day.heading}
+          time={selectedSlot.slot.label}
+        />
       )}
-    </section>
-  );
+      </section>
+    );
 }

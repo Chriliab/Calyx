@@ -16,11 +16,13 @@ export type SessionTypeSummary = {
 
 export type BookingProfile = {
   consultantId: string;
+  sessionTypeId: string;
   name: string;
   timezone: string;
   rules: AvailabilityRule[];
   sessionType: SessionTypeSummary;
 };
+
 
 /** Everything the booking page needs before it knows which week to show. */
 export async function getBookingProfile(
@@ -40,6 +42,7 @@ export async function getBookingProfile(
         orderBy: { createdAt: "asc" },
         take: 1,
         select: {
+          id: true,
           title: true,
           durationMinutes: true,
           priceCents: true,
@@ -49,11 +52,13 @@ export async function getBookingProfile(
     },
   });
 
-  const sessionType = consultant?.sessionTypes[0];
-  if (!consultant || !sessionType) return null;
+    if (!consultant || !consultant.sessionTypes[0]) return null;
+
+      const { id: sessionTypeId, ...sessionType } = consultant.sessionTypes[0];
 
   return {
     consultantId: consultant.id,
+    sessionTypeId,
     name: consultant.name,
     timezone: consultant.timezone,
     rules: consultant.availabilityRules,
