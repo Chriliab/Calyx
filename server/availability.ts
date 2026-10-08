@@ -1,31 +1,31 @@
 import { prisma } from "@/lib/prisma";
-import { generateSlots, type Interval } from "@/lib/availability";
+import {
+  generateSlots,
+  type AvailabilityRule,
+  type Interval,
+} from "@/lib/availability";
 
 const MAX_RANGE_DAYS = 60;
 
-export type PublicAvailability = {
-  consultant: { name: string; timezone: string };
-  sessionType: {
-    title: string;
-    durationMinutes: number;
-    priceCents: number;
-    currency: string;
-  };
-  slots: Interval[];
+export type SessionTypeSummary = {
+  title: string;
+  durationMinutes: number;
+  priceCents: number;
+  currency: string;
 };
 
-export async function getPublicAvailability(params: {
-  slug: string;
-  rangeStart: Date;
-  rangeEnd: Date;
-}): Promise<PublicAvailability | null> {
-  const { slug, rangeStart } = params;
+export type BookingProfile = {
+  consultantId: string;
+  name: string;
+  timezone: string;
+  rules: AvailabilityRule[];
+  sessionType: SessionTypeSummary;
+};
 
-  // Cap the window so one request can't ask for a decade of slots.
-  const maxEnd = new Date(rangeStart.getTime() + MAX_RANGE_DAYS * 86_400_000);
-  const rangeEnd = params.rangeEnd > maxEnd ? maxEnd : params.rangeEnd;
-  if (rangeEnd <= rangeStart) return null;
-
+/** Everything the booking page needs before it knows which week to show. */
+export async function getBookingProfile(
+  slug: string,
+): Promise<BookingProfile | null> {
   const consultant = await prisma.consultant.findUnique({
     where: { slug },
     select: {
@@ -52,9 +52,28 @@ export async function getPublicAvailability(params: {
   const sessionType = consultant?.sessionTypes[0];
   if (!consultant || !sessionType) return null;
 
+  return {
+    consultantId: consultant.id,
+    name: consultant.name,
+    timezone: consultant.timezone,
+    rules: consultant.availabilityRules,
+    sessionType,
+  };
+}
+
+/** Bookable slots for one window, with the range capped. */
+export async function getSlotsForRange(
+  profile: BookingProfile,
+  rangeStart: Date,
+  requestedEnd: Date,
+): Promise<Interval[]> {
+  const maxEnd = new Date(rangeStart.getTime() + MAX_RANGE_DAYS * 86_400_000);
+  const rangeEnd = requestedEnd > maxEnd ? maxEnd : requestedEnd;
+  if (rangeEnd <= rangeStart) return [];
+
   const busy = await prisma.booking.findMany({
     where: {
-      consultantId: consultant.id,
+      consultantId: profile.consultantId,
       status: { not: "CANCELLED" },
       startsAt: { lt: rangeEnd },
       endsAt: { gt: rangeStart },
@@ -62,18 +81,38 @@ export async function getPublicAvailability(params: {
     select: { startsAt: true, endsAt: true },
   });
 
-  const slots = generateSlots({
-    rules: consultant.availabilityRules,
-    timezone: consultant.timezone,
-    durationMinutes: sessionType.durationMinutes,
+  return generateSlots({
+    rules: profile.rules,
+    timezone: profile.timezone,
+    durationMinutes: profile.sessionType.durationMinutes,
     busy,
     rangeStart,
     rangeEnd,
   });
+}
+export type PublicAvailability = {
+  consultant: { name: string; timezone: string };
+  sessionType: SessionTypeSummary;
+  slots: Interval[];
+};
+
+export async function getPublicAvailability(params: {
+  slug: string;
+  rangeStart: Date;
+  rangeEnd: Date;
+}): Promise<PublicAvailability | null> {
+  const profile = await getBookingProfile(params.slug);
+  if (!profile) return null;
+
+  const slots = await getSlotsForRange(
+    profile,
+    params.rangeStart,
+    params.rangeEnd,
+  );
 
   return {
-    consultant: { name: consultant.name, timezone: consultant.timezone },
-    sessionType,
+    consultant: { name: profile.name, timezone: profile.timezone },
+    sessionType: profile.sessionType,
     slots,
   };
 }
