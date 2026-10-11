@@ -20,7 +20,7 @@ export function BookingForm({ slug, startsAt, heading, time }: Props) {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [done, setDone] = useState(false);
+
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -61,23 +61,17 @@ export function BookingForm({ slug, startsAt, heading, time }: Props) {
 
       if (!response.ok) throw new Error("Request failed");
 
-      setDone(true);
+      const data = await response.json();
+      if (typeof data.url !== "string") throw new Error("No checkout URL");
+
+      window.location.assign(data.url);
+      return;
+
     } catch {
       setFormError("Something went wrong. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
-  }
-
-  if (done) {
-    return (
-      <div className="mt-10 rounded-lg border border-green-800 bg-green-950/30 p-5">
-        <p className="font-medium">Request received</p>
-        <p className="mt-1 text-sm text-neutral-400">
-          {heading} at {time}. Payment comes next — that step is not built yet.
-        </p>
-      </div>
-    );
   }
 
   return (

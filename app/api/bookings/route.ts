@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { bookingInputSchema } from "@/lib/validation";
 import { createPendingBooking } from "@/server/bookings";
+import {createCheckoutSession} from "@/server/payment";
 
 export const dynamic = "force-dynamic";
 
@@ -33,5 +34,14 @@ export async function POST(request: Request) {
         );
   }
 
-  return NextResponse.json({ bookingId: result.bookingId }, { status: 201 });
+    const checkout = await createCheckoutSession(result.bookingId);
+
+  if (!checkout.ok) {
+    return NextResponse.json(
+      { error: "Could not start payment. Please try again." },
+      { status: 502 },
+    );
+  }
+
+  return NextResponse.json({ url: checkout.url }, { status: 201 });
 }
