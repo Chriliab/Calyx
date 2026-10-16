@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
+import type Stripe from "stripe";
 
 export type CheckoutResult =
   | { ok: true; url: string }
@@ -69,4 +70,56 @@ export async function createCheckoutSession(
     console.error("Stripe checkout session failed", error);
     return { ok: false, reason: "STRIPE_ERROR" };
   }
+}
+/**
+ * Confirm a booking from a verified checkout.session.completed event.
+ * Safe to run more than once — Stripe retries and may redeliver.
+ */
+export async function confirmBookingPayment(
+  session: Stripe.Checkout.Session,
+): Promise<void> {
+  const bookingId = session.metadata?.bookingId;
+  if (!bookingId) {
+    console.error("Checkout session has no bookingId", session.id);
+    return;
+  }
+
+  if (session.payment_status !== "paid") return;
+
+  const paymentIntentId =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : (session.payment_intent?.id ?? null);
+
+  await prisma.$transaction([
+    prisma.payment.updateMany({
+      where: { stripeSessionId: session.id, status: "PENDING" },
+      data: { status: "SUCCEEDED", stripePaymentIntentId: paymentIntentId },
+    }),
+    prisma.booking.updateMany({
+      where: { id: bookingId, status: "PENDING" },
+      data: { status: "CONFIRMED" },
+    }),
+  ]);
+}
+
+/**
+ * Release a slot when its checkout session expires unpaid.
+ */
+export async function expireBookingPayment(
+  session: Stripe.Checkout.Session,
+): Promise<void> {
+  const bookingId = session.metadata?.bookingId;
+  if (!bookingId) return;
+
+  await prisma.$transaction([
+    prisma.payment.updateMany({
+      where: { stripeSessionId: session.id, status: "PENDING" },
+      data: { status: "FAILED" },
+    }),
+    prisma.booking.updateMany({
+      where: { id: bookingId, status: "PENDING" },
+      data: { status: "CANCELLED" },
+    }),
+  ]);
 }

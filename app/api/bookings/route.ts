@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { bookingInputSchema } from "@/lib/validation";
 import { createPendingBooking } from "@/server/bookings";
-import {createCheckoutSession} from "@/server/payment";
+import {createCheckoutSession} from "@/server/payments";
 
 export const dynamic = "force-dynamic";
 
