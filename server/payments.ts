@@ -1,5 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
+
+import { DateTime } from "luxon";
+import { resend, EMAIL_FROM } from "@/lib/email";
+import {
+  clientConfirmationEmail,
+  consultantNotificationEmail,
+}from "@/lib/emails/booking-confirmed";
+
+
 import type Stripe from "stripe";
 
 export type CheckoutResult =
@@ -91,7 +100,7 @@ export async function confirmBookingPayment(
       ? session.payment_intent
       : (session.payment_intent?.id ?? null);
 
-  await prisma.$transaction([
+  const [, bookingUpdate]=await prisma.$transaction([
     prisma.payment.updateMany({
       where: { stripeSessionId: session.id, status: "PENDING" },
       data: { status: "SUCCEEDED", stripePaymentIntentId: paymentIntentId },
@@ -101,6 +110,9 @@ export async function confirmBookingPayment(
       data: { status: "CONFIRMED" },
     }),
   ]);
+  if (bookingUpdate.count === 0) return;
+
+    await sendBookingEmails(bookingId);
 }
 
 /**
@@ -122,4 +134,65 @@ export async function expireBookingPayment(
       data: { status: "CANCELLED" },
     }),
   ]);
+}
+
+async function sendBookingEmails(bookingId: string): Promise<void> {
+  const booking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    select: {
+      startsAt: true,
+      projectDescription: true,
+      budgetRange: true,
+      timeline: true,
+      consultant: { select: { name: true, email: true, timezone: true } },
+      sessionType: { select: { title: true } },
+      client: { select: { name: true, email: true } },
+    },
+  });
+
+  if (!booking) return;
+
+  const when = DateTime.fromJSDate(booking.startsAt, {
+    zone: booking.consultant.timezone,
+  }).toFormat("cccc d LLLL yyyy 'at' HH:mm");
+
+  const shared = {
+    consultantName: booking.consultant.name,
+    clientName: booking.client.name,
+    sessionTitle: booking.sessionType.title,
+    when,
+    timezone: booking.consultant.timezone,
+  };
+
+  const clientEmail = clientConfirmationEmail(shared);
+  const consultantEmail = consultantNotificationEmail({
+    ...shared,
+    clientEmail: booking.client.email,
+    projectDescription: booking.projectDescription,
+    budgetRange: booking.budgetRange,
+    timeline: booking.timeline,
+  });
+
+  const results = await Promise.allSettled([
+    resend.emails.send({
+      from: EMAIL_FROM,
+      to: booking.client.email,
+      subject: clientEmail.subject,
+      html: clientEmail.html,
+      text: clientEmail.text,
+    }),
+    resend.emails.send({
+      from: EMAIL_FROM,
+      to: booking.consultant.email,
+      subject: consultantEmail.subject,
+      html: consultantEmail.html,
+      text: consultantEmail.text,
+    }),
+  ]);
+
+  for (const result of results) {
+    if (result.status === "rejected") {
+      console.error("Booking email failed", bookingId, result.reason);
+    }
+  }
 }
