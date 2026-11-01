@@ -53,6 +53,10 @@ export function BookingForm({ slug, startsAt, heading, time }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(parsed.data),
       });
+      if (response.status === 429) {
+        setFormError("Too many attempts. Please wait a few minutes and try again.");
+        return;
+      }
 
       if (response.status === 409) {
         setFormError("That time was just booked. Please pick another slot.");

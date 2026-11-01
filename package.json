@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
+    "@upstash/ratelimit": "^2.2.0",
+    "@upstash/redis": "^1.40.0",
     "luxon": "^3.7.2",
     "next": "14.2.35",
     "react": "^18",

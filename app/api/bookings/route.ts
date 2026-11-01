@@ -2,10 +2,24 @@ import { NextResponse } from "next/server";
 import { bookingInputSchema } from "@/lib/validation";
 import { createPendingBooking } from "@/server/bookings";
 import {createCheckoutSession} from "@/server/payments";
+import { checkBookingRateLimit, getClientIp } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+
+    const rateLimit = await checkBookingRateLimit(getClientIp(request));
+
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many booking attempts. Please try again shortly." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(rateLimit.retryAfterSeconds) },
+      },
+    );
+  }
+
   let body: unknown;
 
   try {
