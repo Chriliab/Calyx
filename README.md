@@ -48,6 +48,8 @@ The parts of this project I'd actually want to talk through.
 
 **Side effects don't undo committed state.** Emails are sent after the confirmation transaction commits, with `Promise.allSettled` and errors logged rather than thrown. A failing email must not produce a 500, because Stripe would retry and the retry would skip the send entirely.
 
+**Rate limiting runs before anything else, and fails open.** `/api/bookings` is public and every accepted request holds a slot, so it allows 5 attempts per IP per 10-minute sliding window, checked before the body is even parsed — the cheapest rejection first. Counters live in Upstash Redis, because in-memory counters are meaningless on serverless, where each request may hit a different instance. If Redis is unreachable the request is allowed and the failure logged: the limiter is abuse mitigation, not correctness, and an outage shouldn't stop real clients booking. Double-booking and pricing are still enforced by the database either way.
+
 **Client-supplied text is escaped before it reaches an email template.** Validation caps length and checks format; it never makes content safe to render as HTML.
 
 ## Tech stack
@@ -62,6 +64,7 @@ The parts of this project I'd actually want to talk through.
 | Dates & timezones | Luxon |
 | Payments | Stripe (Checkout + Webhooks) |
 | Email | Resend |
+| Rate limiting | Upstash Redis |
 | Hosting | Vercel |
 
 ## Architecture
@@ -113,6 +116,8 @@ STRIPE_WEBHOOK_SECRET="whsec_..."
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
 RESEND_API_KEY="re_..."
 EMAIL_FROM="Calyx <onboarding@resend.dev>"
+UPSTASH_REDIS_REST_URL="https://..."
+UPSTASH_REDIS_REST_TOKEN="..."
 ```
 
 Push the schema and start the dev server:
@@ -139,8 +144,6 @@ You'll also need a consultant, a session type and some availability rules in the
 
 **Consequence:** `npm audit` reports vulnerabilities in the Next 14 dependency tree, including a critical RCE advisory that applies to self-hosted Windows servers. Calyx deploys to Vercel (Linux), so the exposure is limited, but this is real technical debt.
 
-**No rate limiting yet.** `/api/bookings` creates a database row per request and is publicly reachable. Needs a distributed limiter (Upstash Redis) — an in-memory counter is meaningless on serverless, where each request may hit a different instance.
-
 **Delayed payment methods aren't handled.** Stripe enables Klarna, Bancontact and similar by default. For these, `checkout.session.completed` fires before funds settle; the `payment_status !== "paid"` guard correctly refuses to confirm, but nothing listens for the later settlement, so such a booking would stay `PENDING`. Fix is either to subscribe to `checkout.session.async_payment_succeeded` or to restrict `payment_method_types` to cards.
 
 **No `replyTo` on outgoing email.** Confirmations send from an unmonitored address; a client hitting reply gets a bounce.
@@ -151,7 +154,6 @@ You'll also need a consultant, a session type and some availability rules in the
 
 - **Consultant auth (Clerk)** and self-service onboarding — the schema already mirrors Clerk user IDs
 - **Consultant dashboard** — upcoming bookings with intake answers, ownership-checked on every read
-- Rate limiting on booking and payment endpoints
 - Client-side timezone selection (v1 displays the consultant's timezone, clearly labelled)
 - Multiple session types per consultant
 - Per-date availability overrides, holidays, buffers between sessions
