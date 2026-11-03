@@ -2,7 +2,7 @@
 
 A booking SaaS for **freelance developers and consultants** to sell paid consultation and discovery calls — with a custom intake form so clients share project details upfront, before the call ever happens.
 
-![Calyx booking page showing available time slots](./Calyx_Thumbnail.png)
+![Calyx booking page showing available time slots](./Calyx_Thumbnail.jpg)
 
 **Live demo:** [calyx.chrisliampas.dev](https://calyx.chrisliampas.dev) &nbsp;•&nbsp; **Demo video/GIF:** coming soon
 
