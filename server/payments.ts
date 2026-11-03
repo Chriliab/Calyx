@@ -23,7 +23,6 @@ export async function createCheckoutSession(
     select: {
       id: true,
       status: true,
-      startsAt: true,
       priceAtBooking: true,
       currencyAtBooking: true,
       consultant: { select: { name: true, slug: true } },
@@ -38,11 +37,17 @@ export async function createCheckoutSession(
   if (booking.payment) return { ok: false, reason: "ALREADY_PAID" };
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL;
-  if (!baseUrl) return { ok: false, reason: "STRIPE_ERROR" };
+  if (!baseUrl) {
+    await releaseBooking(booking.id);
+    return { ok: false, reason: "STRIPE_ERROR" };
+  }
+
+  let session: Stripe.Checkout.Session;
 
   try {
-    const session = await stripe.checkout.sessions.create({
+    session = await stripe.checkout.sessions.create({
       mode: "payment",
+      allowed_payment_method_types: ["card"],
       customer_email: booking.client.email,
       line_items: [
         {
@@ -61,24 +66,37 @@ export async function createCheckoutSession(
       cancel_url: `${baseUrl}/book/${booking.consultant.slug}?cancelled=1`,
       expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
     });
-
-    if (!session.url) return { ok: false, reason: "STRIPE_ERROR" };
-
-    await prisma.payment.create({
-      data: {
-        bookingId: booking.id,
-        stripeSessionId: session.id,
-        amountCents: booking.priceAtBooking,
-        currency: booking.currencyAtBooking,
-        status: "PENDING",
-      },
-    });
-
-    return { ok: true, url: session.url };
   } catch (error) {
+    // No session exists, so nobody can pay — safe to free the slot now.
     console.error("Stripe checkout session failed", error);
+    await releaseBooking(booking.id);
     return { ok: false, reason: "STRIPE_ERROR" };
   }
+
+  if (!session.url) {
+    await releaseBooking(booking.id);
+    return { ok: false, reason: "STRIPE_ERROR" };
+  }
+
+  await prisma.payment.create({
+    data: {
+      bookingId: booking.id,
+      stripeSessionId: session.id,
+      amountCents: booking.priceAtBooking,
+      currency: booking.currencyAtBooking,
+      status: "PENDING",
+    },
+  });
+
+  return { ok: true, url: session.url };
+}
+
+/** Free the slot held by a booking that will never reach payment. */
+async function releaseBooking(bookingId: string): Promise<void> {
+  await prisma.booking.updateMany({
+    where: { id: bookingId, status: "PENDING" },
+    data: { status: "CANCELLED" },
+  });
 }
 /**
  * Confirm a booking from a verified checkout.session.completed event.
@@ -177,6 +195,7 @@ async function sendBookingEmails(bookingId: string): Promise<void> {
     resend.emails.send({
       from: EMAIL_FROM,
       to: booking.client.email,
+      replyTo: booking.consultant.email,
       subject: clientEmail.subject,
       html: clientEmail.html,
       text: clientEmail.text,
@@ -184,6 +203,7 @@ async function sendBookingEmails(bookingId: string): Promise<void> {
     resend.emails.send({
       from: EMAIL_FROM,
       to: booking.consultant.email,
+      replyTo: booking.client.email,  
       subject: consultantEmail.subject,
       html: consultantEmail.html,
       text: consultantEmail.text,
