@@ -44,6 +44,10 @@ The parts of this project I'd actually want to talk through.
 
 **Webhook handling is idempotent by construction.** Status transitions use conditional updates (`where: { status: "PENDING" }`), so a redelivered event matches zero rows and changes nothing. The same `count === 0` check prevents duplicate confirmation emails, and means a cancelled booking can't be resurrected by a replay.
 
+**Checkout accepts cards only, pinned in code.** Delayed-notification methods (SEPA Direct Debit, bank transfers and similar) complete Checkout as `unpaid` and settle days later through a separate event the webhook doesn't handle. An explicit `allowed_payment_method_types: ["card"]` keeps that assumption in version control, so enabling a payment method in the Stripe dashboard can't silently strand bookings in `PENDING`. Apple Pay and Google Pay still work, as card wallets.
+
+**A failed checkout releases its slot.** Bookings are created before the Stripe session, so if Stripe refuses to create one, the booking is cancelled immediately rather than holding the slot forever. If the session *was* created, the booking is deliberately left alone — the client could still pay — and the session's 30-minute expiry webhook releases it instead.
+
 **Price is read from the database, never from the request.** The client posts a slot and their details — never an amount. `priceAtBooking` is snapshotted onto the booking so historical records stay correct if the consultant later changes their rate.
 
 **Side effects don't undo committed state.** Emails are sent after the confirmation transaction commits, with `Promise.allSettled` and errors logged rather than thrown. A failing email must not produce a 500, because Stripe would retry and the retry would skip the send entirely.
@@ -143,10 +147,6 @@ You'll also need a consultant, a session type and some availability rules in the
 **Next.js pinned to v14.** Next 15/16 currently pull in Tailwind v4, whose native Windows binary (`@tailwindcss/oxide-win32-x64-msvc`) fails to install reliably in this environment — a known npm optional-dependency bug. Pinning to Next 14 with Tailwind v3 was the pragmatic call to keep the build moving.
 
 **Consequence:** `npm audit` reports vulnerabilities in the Next 14 dependency tree, including a critical RCE advisory that applies to self-hosted Windows servers. Calyx deploys to Vercel (Linux), so the exposure is limited, but this is real technical debt.
-
-**Delayed payment methods aren't handled.** Stripe enables Klarna, Bancontact and similar by default. For these, `checkout.session.completed` fires before funds settle; the `payment_status !== "paid"` guard correctly refuses to confirm, but nothing listens for the later settlement, so such a booking would stay `PENDING`. Fix is either to subscribe to `checkout.session.async_payment_succeeded` or to restrict `payment_method_types` to cards.
-
-**No `replyTo` on outgoing email.** Confirmations send from an unmonitored address; a client hitting reply gets a bounce.
 
 **Single consultant.** v1 enforces one session type per consultant in application logic, and the consultant record is seeded rather than self-service.
 

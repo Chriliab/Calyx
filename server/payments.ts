@@ -210,9 +210,15 @@ async function sendBookingEmails(bookingId: string): Promise<void> {
     }),
   ]);
 
-  for (const result of results) {
+  const labels = ["client", "consultant"] as const;
+
+  results.forEach((result, index) => {
+    const recipient = labels[index];
+
     if (result.status === "rejected") {
-      console.error("Booking email failed", bookingId, result.reason);
+      console.error(`Booking email failed (${recipient})`, bookingId, result.reason);
+    } else if (result.value.error) {
+      console.error(`Booking email rejected (${recipient})`, bookingId, result.value.error);
     }
-  }
+  });
 }
