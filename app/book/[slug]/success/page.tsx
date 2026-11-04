@@ -7,9 +7,9 @@ export const dynamic = "force-dynamic";
 export default async function SuccessPage({
   searchParams,
 }: {
-  searchParams: { booking?: string };
+  searchParams: Promise<{ booking?: string }>;
 }) {
-  const bookingId = searchParams.booking;
+  const {booking: bookingId} = await searchParams;
   if (!bookingId) notFound();
 
   const booking = await prisma.booking.findUnique({

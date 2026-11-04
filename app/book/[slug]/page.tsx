@@ -8,9 +8,10 @@ export const dynamic = "force-dynamic";
 export default async function BookingPage({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }) {
-  const profile = await getBookingProfile(params.slug);
+  const { slug } = await params;
+  const profile = await getBookingProfile(slug);
   if (!profile) notFound();
 
   const { rangeStart, rangeEnd } = weekRangeUtc(profile.timezone, 0);
@@ -30,7 +31,7 @@ export default async function BookingPage({
       </header>
 
       <SlotPicker
-        slug={params.slug}
+        slug={slug}
         timezone={profile.timezone}
         initialSlots={slots.map((slot) => ({
           startsAt: slot.startsAt.toISOString(),
