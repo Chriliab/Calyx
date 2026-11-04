@@ -2,7 +2,7 @@
 
 A booking SaaS for **freelance developers and consultants** to sell paid consultation and discovery calls — with a custom intake form so clients share project details upfront, before the call ever happens.
 
-![Calyx booking page showing available time slots](./Calyx_Thumbnail.jpg)
+![Calyx booking page showing available time slots](./Calyx_Thumbnail.png)
 
 **Live demo:** [calyx.chrisliampas.dev](https://calyx.chrisliampas.dev) &nbsp;•&nbsp; **Demo video/GIF:** coming soon
 
@@ -61,7 +61,7 @@ The parts of this project I'd actually want to talk through.
 | Layer | Choice |
 |---|---|
 | Language | TypeScript (full stack) |
-| Frontend | React, Next.js 14 (App Router) |
+| Frontend | React 19, Next.js 16 (App Router, Turbopack) |
 | Styling | Tailwind CSS |
 | Database | PostgreSQL (Neon) + Prisma ORM |
 | Validation | Zod (shared client/server schemas) |
@@ -144,9 +144,11 @@ You'll also need a consultant, a session type and some availability rules in the
 
 ## Known issues & technical debt
 
-**Next.js pinned to v14.** Next 15/16 currently pull in Tailwind v4, whose native Windows binary (`@tailwindcss/oxide-win32-x64-msvc`) fails to install reliably in this environment — a known npm optional-dependency bug. Pinning to Next 14 with Tailwind v3 was the pragmatic call to keep the build moving.
+**Tailwind stays on v3.** Tailwind v4's native Windows binary (`@tailwindcss/oxide-win32-x64-msvc`) fails to install reliably in this environment — a known npm optional-dependency bug. Next.js doesn't depend on Tailwind, so the framework runs on Next 16 while Tailwind stays on v3. Upgrading Tailwind is separate, deferred work.
 
-**Consequence:** `npm audit` reports vulnerabilities in the Next 14 dependency tree, including a critical RCE advisory that applies to self-hosted Windows servers. Calyx deploys to Vercel (Linux), so the exposure is limited, but this is real technical debt.
+**No linting.** Next 16 removed `next lint`, and ESLint hasn't been set up directly yet. TypeScript catches type errors, but nothing currently checks for unused code, React hook dependency mistakes or accessibility slips.
+
+**Preview deployments share the production database.** Testing on a Vercel preview writes real rows into the same Neon database production uses. Harmless with Stripe in test mode, but a real product would give each preview its own database branch.
 
 **Single consultant.** v1 enforces one session type per consultant in application logic, and the consultant record is seeded rather than self-service.
 
