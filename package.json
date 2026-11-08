@@ -9,6 +9,7 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
+    "@clerk/nextjs": "^7.9.25",
     "@prisma/client": "^6.19.3",
     "@upstash/ratelimit": "^2.2.0",
     "@upstash/redis": "^1.40.0",
