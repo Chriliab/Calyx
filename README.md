@@ -22,6 +22,7 @@ See [Roadmap](#roadmap) for what is deliberately not built yet.
 
 ## Features
 
+- 🔐 **Consultant sign-in** — Clerk authentication with invite-only accounts and a protected dashboard; clients book as guests, with no account needed
 - 📅 **Availability & booking** — consultants define weekly availability rules; bookable slots are computed on demand, with timezone-correct display and database-level double-booking prevention
 - 💳 **Payments** — Stripe Checkout, with bookings confirmed only by a signature-verified webhook
 - 📋 **Custom intake form** — clients submit project scope, budget range and timeline at booking time, so the consultant walks in prepared
@@ -54,6 +55,10 @@ The parts of this project I'd actually want to talk through.
 
 **Rate limiting runs before anything else, and fails open.** `/api/bookings` is public and every accepted request holds a slot, so it allows 5 attempts per IP per 10-minute sliding window, checked before the body is even parsed — the cheapest rejection first. Counters live in Upstash Redis, because in-memory counters are meaningless on serverless, where each request may hit a different instance. If Redis is unreachable the request is allowed and the failure logged: the limiter is abuse mitigation, not correctness, and an outage shouldn't stop real clients booking. Double-booking and pricing are still enforced by the database either way.
 
+**Auth is checked twice, and ownership comes from the session.** `proxy.ts` blocks signed-out visitors from `/dashboard` before any page code runs, and every dashboard page checks the session again with `await auth()` — so a middleware bypass (like 2025's CVE-2025-29927) wouldn't expose anything. Data is always looked up by the signed-in user's ID, never by an ID from the URL, which rules out insecure direct object references. `Consultant.id` *is* the Clerk user ID, so ownership needs no join table.
+
+**Sign-up is invite-only, enforced by Clerk's servers.** Booking stays fully public, but consultant accounts can only be created from the Clerk dashboard. In production, sessions are also restricted to the app's own origin (`authorizedParties`), so a session token issued to any other site is rejected.
+
 **Client-supplied text is escaped before it reaches an email template.** Validation caps length and checks format; it never makes content safe to render as HTML.
 
 ## Tech stack
@@ -69,6 +74,7 @@ The parts of this project I'd actually want to talk through.
 | Payments | Stripe (Checkout + Webhooks) |
 | Email | Resend |
 | Rate limiting | Upstash Redis |
+| Auth | Clerk (invite-only consultant accounts) |
 | Hosting | Vercel |
 
 ## Architecture
@@ -122,7 +128,13 @@ RESEND_API_KEY="re_..."
 EMAIL_FROM="Calyx <onboarding@resend.dev>"
 UPSTASH_REDIS_REST_URL="https://..."
 UPSTASH_REDIS_REST_TOKEN="..."
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="pk_test_..."
+CLERK_SECRET_KEY="sk_test_..."
+NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL=/dashboard
 ```
+
+The Clerk keys come from a Clerk **development** instance. Set its access mode to invite-only, create your user in the Clerk dashboard, and set your `Consultant` row's `id` to that user's ID — that's what links your account to your consultant profile.
 
 Push the schema and start the dev server:
 
@@ -150,12 +162,14 @@ You'll also need a consultant, a session type and some availability rules in the
 
 **Preview deployments share the production database.** Testing on a Vercel preview writes real rows into the same Neon database production uses. Harmless with Stripe in test mode, but a real product would give each preview its own database branch.
 
-**Single consultant.** v1 enforces one session type per consultant in application logic, and the consultant record is seeded rather than self-service.
+**Single consultant.** v1 enforces one session type per consultant in application logic, and the consultant record is linked to its Clerk account by hand rather than through an onboarding flow.
+
+**Previews and production share one database, but not one Clerk instance.** The consultant row can hold only one Clerk user ID, so it's linked to the production account — and the dashboard on previews and localhost shows "not linked". Per-environment database branches would remove the conflict.
 
 ## Roadmap
 
-- **Consultant auth (Clerk)** and self-service onboarding — the schema already mirrors Clerk user IDs
-- **Consultant dashboard** — upcoming bookings with intake answers, ownership-checked on every read
+- **Consultant dashboard** — upcoming bookings with intake answers, ownership-checked on every read (sign-in and the protected route are in place)
+- **Self-service consultant onboarding** — name, booking slug and timezone on first sign-in, so sign-up can open beyond invite-only
 - Client-side timezone selection (v1 displays the consultant's timezone, clearly labelled)
 - Multiple session types per consultant
 - Per-date availability overrides, holidays, buffers between sessions
