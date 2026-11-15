@@ -3,11 +3,23 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 /** Routes only a signed-in consultant may reach. Everything else is public. */
 const isProtectedRoute = createRouteMatcher(["/dashboard(.*)"]);
 
-export default clerkMiddleware(async (auth, request) => {
-  if (isProtectedRoute(request)) {
-    await auth.protect();
-  }
-});
+/**
+ * Origins allowed to use sessions — rejects tokens issued to any other site.
+ * Production only: previews and localhost use the development instance,
+ * which serves several different origins.
+ */
+const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+const authorizedParties =
+  process.env.VERCEL_ENV === "production" && appUrl ? [appUrl] : undefined;
+
+export default clerkMiddleware(
+  async (auth, request) => {
+    if (isProtectedRoute(request)) {
+      await auth.protect();
+    }
+  },
+  { authorizedParties },
+);
 
 export const config = {
   matcher: [
