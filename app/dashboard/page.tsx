@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 import { UserButton } from "@clerk/nextjs";
 import { getConsultantForUser } from "@/server/consultants";
+import { getUpcomingBookings } from "@/server/dashboard";
+import { BookingList } from "./BookingList";
 
 export default async function DashboardPage() {
   // Second gate: never rely on the proxy alone.
@@ -19,18 +21,28 @@ export default async function DashboardPage() {
       </header>
 
       {consultant ? (
-        <section>
-          <p className="text-lg">Signed in as {consultant.name}</p>
-          <p className="mt-2 text-sm text-neutral-400">
-            Your booking page:{" "}
-            <Link
-              href={`/book/${consultant.slug}`}
-              className="text-blue-400 underline"
-            >
-              /book/{consultant.slug}
-            </Link>
-          </p>
-        </section>
+        <>
+          <section className="mb-10">
+            <p className="text-lg">Signed in as {consultant.name}</p>
+            <p className="mt-2 text-sm text-neutral-400">
+              Your booking page:{" "}
+              <Link
+                href={`/book/${consultant.slug}`}
+                className="text-blue-400 underline"
+              >
+                /book/{consultant.slug}
+              </Link>
+            </p>
+          </section>
+
+          <section>
+            <h2 className="mb-4 text-lg font-medium">Upcoming bookings</h2>
+            <BookingList
+              bookings={await getUpcomingBookings(userId)}
+              timezone={consultant.timezone}
+            />
+          </section>
+        </>
       ) : (
         <p className="text-neutral-400">
           Your account isn&apos;t linked to a consultant profile yet.

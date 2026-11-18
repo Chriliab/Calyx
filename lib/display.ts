@@ -67,3 +67,15 @@ export function formatPrice(cents: number, currency: string): string {
     currency,
   }).format(cents / 100);
 }
+
+/** e.g. "Monday 23 November, 10:00–11:00", in the consultant's timezone. */
+export function formatBookingWindow(
+  startsAt: Date,
+  endsAt: Date,
+  timezone: string,
+): string {
+  const start = DateTime.fromJSDate(startsAt, { zone: timezone });
+  const end = DateTime.fromJSDate(endsAt, { zone: timezone });
+
+  return `${start.toFormat("cccc d LLLL")}, ${start.toFormat("HH:mm")}–${end.toFormat("HH:mm")}`;
+}
