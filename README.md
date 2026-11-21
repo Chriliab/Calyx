@@ -23,7 +23,7 @@ See [Roadmap](#roadmap) for what is deliberately not built yet.
 ## Features
 
 - 🔐 **Consultant sign-in** — Clerk authentication with invite-only accounts and a protected dashboard; clients book as guests, with no account needed
-- 🗂️ **Consultant dashboard** — upcoming confirmed bookings with each client's intake answers, shown in the consultant's timezone
+- 🗂️ **Consultant dashboard** — upcoming confirmed bookings with each client's intake answers, shown in the consultant's timezone, plus cancellation that emails the client and frees the slot
 - 📅 **Availability & booking** — consultants define weekly availability rules; bookable slots are computed on demand, with timezone-correct display and database-level double-booking prevention
 - 💳 **Payments** — Stripe Checkout, with bookings confirmed only by a signature-verified webhook
 - 📋 **Custom intake form** — clients submit project scope, budget range and timeline at booking time, so the consultant walks in prepared
@@ -59,6 +59,8 @@ The parts of this project I'd actually want to talk through.
 **Auth is checked twice, and ownership comes from the session.** `proxy.ts` blocks signed-out visitors from `/dashboard` before any page code runs, and every dashboard page checks the session again with `await auth()` — so a middleware bypass (like 2025's CVE-2025-29927) wouldn't expose anything. Data is always looked up by the signed-in user's ID, never by an ID from the URL, which rules out insecure direct object references. `Consultant.id` *is* the Clerk user ID, so ownership needs no join table.
 
 **Sign-up is invite-only, enforced by Clerk's servers.** Booking stays fully public, but consultant accounts can only be created from the Clerk dashboard. In production, sessions are also restricted to the app's own origin (`authorizedParties`), so a session token issued to any other site is rejected.
+
+**Cancelling is one conditional update.** "This consultant's booking, still confirmed, not yet started" is checked and changed in a single `updateMany`, so there's no gap between checking and changing, and a double click sends exactly one email. The server action behind the button authenticates and validates its input itself, because a server action is a public HTTP endpoint that anyone can call with any argument. Nothing frees the slot explicitly: availability is computed from live bookings, so a cancelled booking simply stops counting.
 
 **Each environment has its own database.** Production runs on Neon's main branch; local development and Vercel previews run on a separate `development` branch. Test bookings never touch production data, and each database links the consultant to the matching Clerk instance — development keys locally and on previews, production keys live.
 
@@ -163,13 +165,15 @@ You'll also need a consultant, a session type and some availability rules in the
 
 **No linting.** Next 16 removed `next lint`, and ESLint hasn't been set up directly yet. TypeScript catches type errors, but nothing currently checks for unused code, React hook dependency mistakes or accessibility slips.
 
+**Refunds are manual, and Calyx doesn't see them.** Cancelling a booking emails the client that a refund will follow; the consultant issues it in the Stripe dashboard. Calyx doesn't listen for refund events, so a refunded booking's payment still reads `SUCCEEDED`.
+
 **Single consultant.** v1 enforces one session type per consultant in application logic, and the consultant record is linked to its Clerk account by hand rather than through an onboarding flow.
 
 **The development branch holds a copy of production data.** It was created by copying production, which is fine while every booking is test data. Once real clients exist, development branches should be created with Neon's anonymisation option, so developers never work against real people's personal data.
 
 ## Roadmap
 
-- **Cancelling bookings from the dashboard** — upcoming bookings and their intake answers are already shown, scoped to the signed-in consultant
+- **Refund tracking** — listen for `charge.refunded`, mark payments as refunded, and show cancelled-but-unrefunded bookings on the dashboard as a to-do
 - **Self-service consultant onboarding** — name, booking slug and timezone on first sign-in, so sign-up can open beyond invite-only
 - Client-side timezone selection (v1 displays the consultant's timezone, clearly labelled)
 - Multiple session types per consultant

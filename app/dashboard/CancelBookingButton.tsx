@@ -20,8 +20,8 @@ export function CancelBookingButton({ bookingId }: { bookingId: string }) {
             "This booking couldn't be cancelled — it may have already started or been cancelled.",
           );
         }
-      } catch {
-        setError("Something went wrong. Please try again.");
+        } catch {
+        setError("Something went wrong. Please refresh the page and try again.");
       }
     });
   }
