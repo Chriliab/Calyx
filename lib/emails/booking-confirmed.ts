@@ -1,3 +1,5 @@
+import { escapeHtml } from "./escape-html";
+
 type ConfirmationData = {
   consultantName: string;
   clientName: string;
@@ -13,14 +15,6 @@ type NotificationData = ConfirmationData & {
   timeline: string;
 };
 
-/** Client-supplied text is never trusted as HTML. */
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
 
 export function clientConfirmationEmail(data: ConfirmationData) {
   const subject = `Booking confirmed — ${data.sessionTitle}`;

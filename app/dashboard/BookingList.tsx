@@ -1,5 +1,7 @@
 import type { DashboardBooking } from "@/server/dashboard";
 import { formatBookingWindow } from "@/lib/display";
+import { CancelBookingButton } from "./CancelBookingButton";
+
 
 type Props = {
   bookings: DashboardBooking[];
@@ -48,6 +50,9 @@ export function BookingList({ bookings, timezone }: Props) {
               {booking.projectDescription}
             </p>
           </div>
+              {booking.startsAt > new Date() && (
+            <CancelBookingButton bookingId={booking.id} />
+              )}
         </li>
       ))}
     </ul>
