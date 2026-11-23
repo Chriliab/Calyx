@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import defaultTheme from "tailwindcss/defaultTheme";
 
 /** A theme colour from globals.css, with opacity support (e.g. bg-accent/15). */
 const token = (name: string) => `rgb(var(--color-${name}) / <alpha-value>)`;
@@ -21,6 +22,10 @@ const config: Config = {
         field: token("field"),
         accent: token("accent"),
         "on-accent": token("on-accent"),
+      },
+      fontFamily: {
+        sans: ["var(--font-sans)", ...defaultTheme.fontFamily.sans],
+        serif: ["var(--font-serif)", ...defaultTheme.fontFamily.serif],
       },
     },
   },
