@@ -2,6 +2,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { Faq } from "@/components/landing/Faq";
 import { Hero } from "@/components/landing/Hero";
 import { HowItWorks } from "@/components/landing/HowItWorks";
+import { BackToTop } from "@/components/BackToTop";
 
 export default function HomePage() {
   return (
@@ -12,6 +13,7 @@ export default function HomePage() {
         <HowItWorks />
         <Faq />
       </main>
+        <BackToTop />
     </div>
   );
 }
