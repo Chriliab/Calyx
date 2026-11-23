@@ -1,4 +1,5 @@
 import { SiteHeader } from "@/components/SiteHeader";
+import { Faq } from "@/components/landing/Faq";
 import { Hero } from "@/components/landing/Hero";
 import { HowItWorks } from "@/components/landing/HowItWorks";
 
@@ -9,6 +10,7 @@ export default function HomePage() {
       <main className="flex-1">
         <Hero />
         <HowItWorks />
+        <Faq />
       </main>
     </div>
   );
