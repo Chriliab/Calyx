@@ -3,6 +3,7 @@ import { Faq } from "@/components/landing/Faq";
 import { Hero } from "@/components/landing/Hero";
 import { HowItWorks } from "@/components/landing/HowItWorks";
 import { BackToTop } from "@/components/BackToTop";
+import { SiteFooter } from "@/components/SiteFooter";
 
 export default function HomePage() {
   return (
@@ -14,6 +15,7 @@ export default function HomePage() {
         <Faq />
       </main>
         <BackToTop />
+        <SiteFooter />
     </div>
   );
 }
