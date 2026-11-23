@@ -2,22 +2,34 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Theme tokens as RGB channels, so Tailwind opacity modifiers work (e.g. bg-accent/15). */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+  --color-canvas: 247 247 251;    /* #F7F7FB */
+  --color-surface: 255 255 255;   /* #FFFFFF */
+  --color-ink: 22 19 43;          /* #16132B */
+  --color-muted: 92 88 120;       /* #5C5878 */
+  --color-line: 228 226 238;      /* #E4E2EE */
+  --color-field: 141 137 166;     /* #8D89A6 */
+  --color-accent: 32 121 63;      /* #20793F */
+  --color-on-accent: 255 255 255; /* #FFFFFF */
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-canvas: 17 14 36;       /* #110E24 */
+  --color-surface: 26 22 51;      /* #1A1633 */
+  --color-ink: 243 242 250;       /* #F3F2FA */
+  --color-muted: 166 163 194;     /* #A6A3C2 */
+  --color-line: 46 41 80;         /* #2E2950 */
+  --color-field: 107 102 148;     /* #6B6694 */
+  --color-accent: 76 211 123;     /* #4CD37B */
+  --color-on-accent: 17 14 36;    /* #110E24 */
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: rgb(var(--color-canvas));
+  color: rgb(var(--color-ink));
 }
 
 @layer utilities {
